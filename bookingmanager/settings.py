@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "rooms",
-    "users",
     "drf_spectacular",
 ]
 
