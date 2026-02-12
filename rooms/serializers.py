@@ -28,7 +28,6 @@ class BookingSerializer(serializers.ModelSerializer):
         read_only_fields = ("is_cancelled",)
 
     def validate(self, attrs):
-        room = attrs["room"]
         start_date = attrs["start_date"]
         end_date = attrs["end_date"]
 
@@ -36,15 +35,6 @@ class BookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "End date must be greater than start date"
             )
-
-        overlapping = (
-            Booking.objects.filter(room=room, is_cancelled=False)
-            .filter(Q(start_date__lt=end_date) & Q(end_date__gt=start_date))
-            .exists()
-        )
-
-        if overlapping:
-            raise serializers.ValidationError("Room is already booked for these dates")
 
         return attrs
 
