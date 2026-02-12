@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.db import transaction
 from django.utils.dateparse import parse_date
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -8,6 +9,7 @@ from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 
 from .models import Booking, Room
 from .serializers import BookingSerializer, RegisterSerializer, RoomSerializer
@@ -64,7 +66,24 @@ class BookingViewSet(viewsets.ModelViewSet):
         return Booking.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+
+        with transaction.atomic():
+            room = serializer.validated_data['room']
+            start_date = serializer.validated_data['start_date']
+            end_date = serializer.validated_data['end_date']
+
+            overlapping = Booking.objects.select_for_update().filter(
+                room=room,
+                is_cancelled=False
+            ).filter(
+                Q(start_date__lt=end_date) &
+                Q(end_date__gt=start_date)
+            ).exists()
+
+            if overlapping:
+                raise ValidationError('Room is already booked for these dates')
+
+            serializer.save(user=self.request.user)
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
