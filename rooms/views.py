@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 from django.db import transaction
 from django.utils.dateparse import parse_date
@@ -102,3 +103,30 @@ class RegisterView(APIView):
         serializer.save()
 
         return Response(serializer.data, status=201)
+    
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return Response(
+                {"detail": "Invalid credentials"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        login(request, user)
+        return Response({"detail": "Login successful"})
+    
+class LogoutView(APIView):
+
+    def post(self, request):
+        logout(request)
+        return Response({"detail": "Logout successful"})
+
+
