@@ -1,16 +1,15 @@
-from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from django.db.models import Q
 from django.db import transaction
+from django.db.models import Q
 from django.utils.dateparse import parse_date
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
 
 from .models import Booking, Room
 from .serializers import BookingSerializer, RegisterSerializer, RoomSerializer
@@ -59,9 +58,15 @@ class RoomViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-class BookingViewSet(viewsets.ModelViewSet):
+class BookingViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post"]
 
     def get_queryset(self):
         return Booking.objects.filter(user=self.request.user)
@@ -69,20 +74,19 @@ class BookingViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
 
         with transaction.atomic():
-            room = serializer.validated_data['room']
-            start_date = serializer.validated_data['start_date']
-            end_date = serializer.validated_data['end_date']
+            room = serializer.validated_data["room"]
+            start_date = serializer.validated_data["start_date"]
+            end_date = serializer.validated_data["end_date"]
 
-            overlapping = Booking.objects.select_for_update().filter(
-                room=room,
-                is_cancelled=False
-            ).filter(
-                Q(start_date__lt=end_date) &
-                Q(end_date__gt=start_date)
-            ).exists()
+            overlapping = (
+                Booking.objects.select_for_update()
+                .filter(room=room, is_cancelled=False)
+                .filter(Q(start_date__lt=end_date) & Q(end_date__gt=start_date))
+                .exists()
+            )
 
             if overlapping:
-                raise ValidationError('Room is already booked for these dates')
+                raise ValidationError("Room is already booked for these dates")
 
             serializer.save(user=self.request.user)
 
@@ -103,7 +107,7 @@ class RegisterView(APIView):
         serializer.save()
 
         return Response(serializer.data, status=201)
-    
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -122,11 +126,10 @@ class LoginView(APIView):
 
         login(request, user)
         return Response({"detail": "Login successful"})
-    
+
+
 class LogoutView(APIView):
 
     def post(self, request):
         logout(request)
         return Response({"detail": "Logout successful"})
-
-

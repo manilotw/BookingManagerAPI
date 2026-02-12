@@ -2,9 +2,10 @@ from datetime import date
 
 from django.contrib.auth.models import User
 from django.urls import reverse
-from rooms.models import Booking, Room
 from rest_framework import status
 from rest_framework.test import APITestCase
+
+from rooms.models import Booking, Room
 
 
 class BookingTests(APITestCase):

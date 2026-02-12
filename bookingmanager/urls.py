@@ -16,13 +16,12 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from rooms.views import LoginView, LogoutView
-
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
-from rooms.views import BookingViewSet, RegisterView, RoomViewSet
+from rooms.views import (BookingViewSet, LoginView, LogoutView, RegisterView,
+                         RoomViewSet)
 
 router = DefaultRouter()
 router.register("rooms", RoomViewSet)
